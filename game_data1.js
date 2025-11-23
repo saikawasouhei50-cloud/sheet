@@ -8,10 +8,11 @@ let mainStories = [];  // 추가
 let eventStories = []; // 추가
 let currentEventInfo = {};
 let EVENT_CHARACTER_NAME = "";
+let mainChapters = [];
 let gachaPool = {}; // 가챠 등장 목록
 			// ==========================================
 // 1. 아까 복사한 웹 앱 URL을 따옴표 안에 넣으세요
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwR5R7SQk0nQc9BJIxh5LrktsQCsaX2I56AGerpkvwH7JziM2TWQ-WPfxXoE8U8ERgZ/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyGdqSOh74-MJpzz9_8llpLJo-D-RtP5U3_dPSvZqTuA8mo2CSROGGo3jc4IibNDe2Xcw/exec";
 // ==========================================
 
 // 2. 데이터를 가져와서 characters 변수에 채워넣는 함수
@@ -177,6 +178,66 @@ async function loadGameData() {
             console.log("가챠 등장 목록 로드 완료");
         }
 
+// 11. 스테이지 및 스테이지 스토리 조립 (복잡함 주의!)
+        if (data.stages && data.stageStories) {
+            const tempChapters = {}; // 챕터별로 모으기 위한 임시 저장소
+
+            // (1) 스테이지 기본 정보 구성
+            data.stages.forEach(row => {
+                const chIdx = Number(row.chapter_index);
+                const stIdx = Number(row.stage_index);
+
+                // 해당 챕터가 처음 나오면 초기화
+                if (!tempChapters[chIdx]) {
+                    tempChapters[chIdx] = {
+                        chapterName: row.chapter_name,
+                        stages: []
+                    };
+                }
+
+                // 스테이지 객체 생성 (스토리는 아직 비워둠)
+                tempChapters[chIdx].stages[stIdx] = {
+                    stageName: row.stage_name,
+                    monsterName: row.monster_name,
+                    rewards: {
+                        fountainPens: Number(row.reward_fp),
+                        currency: Number(row.reward_cur)
+                    },
+                    stageStory: [] // 여기에 스토리를 채울 예정
+                };
+            });
+
+            // (2) 스테이지 스토리 채워넣기
+            data.stageStories.forEach(row => {
+                const chIdx = Number(row.chapter_index);
+                const stIdx = Number(row.stage_index);
+
+                // 해당하는 스테이지가 존재하면 대사 추가
+                if (tempChapters[chIdx] && tempChapters[chIdx].stages[stIdx]) {
+                    tempChapters[chIdx].stages[stIdx].stageStory.push({
+                        character: (row.character && row.character !== "") ? row.character : null,
+                        expression: row.expression,
+                        position: row.position,
+                        dialogue: row.dialogue
+                    });
+                }
+            });
+
+            // (3) 최종적으로 mainChapters 배열로 변환 (인덱스 순서대로)
+            mainChapters = [];
+            const sortedChapterKeys = Object.keys(tempChapters).sort((a, b) => a - b);
+            
+            sortedChapterKeys.forEach(key => {
+                // 각 챕터의 스테이지 배열도 빈 구멍 없이 정리
+                const chapterObj = tempChapters[key];
+                // 구멍 난 인덱스(예: 0, 2만 있고 1이 없는 경우) 방지 필터링
+                chapterObj.stages = chapterObj.stages.filter(s => s !== undefined);
+                mainChapters.push(chapterObj);
+            });
+
+            console.log("메인 챕터 & 스테이지 스토리 로드 완료");
+        }
+		
         console.log("모든 데이터 로딩 완료!");
 
     } catch (error) {
@@ -187,164 +248,7 @@ async function loadGameData() {
             
             
 
-            const mainChapters = [
-    {
-        chapterName: '제1장: 서재의 흔적',
-        stages: [
-            { 
-                stageName: '1-1. 오래된 문장', monsterName: '의혹의 안개', rewards: { fountainPens: 20, currency: 5 },
-                stageStory: [
-                    { character: null, dialogue: '낡은 서재. 책상 위에는 박민준이 마지막으로 썼던 원고가 펼쳐져 있다. 그 원고는 사건 현장의 모든 것을 설명하려는 듯 완벽하게 보였다.' },
-                    { character: '서도진', expression: 'neutral', position: 'left', dialogue: '모든 것이 너무 완벽해. 이대로는 경찰이 자살로 종결할 수밖에 없어.' },
-                    { character: '도천영', expression: 'serious', position: 'right', dialogue: '우선, 이 현장의 모순을 찾아야 합니다. "의혹의 안개"가 우리를 가로막고 있군요.' }
-                ] 
-            },
-            { 
-                stageName: '1-2. 흐릿한 단서', monsterName: '의혹의 안개', rewards: { fountainPens: 25, currency: 5 },
-                stageStory: [
-                    { character: null, dialogue: '책상 아래에서 오래된 영수증이 발견되었다. 그것은 한 달 전, 박민준이 오른손잡이용 만년필을 구입했다는 증거였다.' },
-                    { character: '서도진', expression: 'surprised', position: 'left', dialogue: '역시, 박민준은 왼손잡이야. 이 펜은... 범인이 가져갔거나, 아니면... 증거가 조작된 거지.' }
-                ]
-            },
-            { 
-                stageName: '1-3. 모방의 그림자', monsterName: '의혹의 안개', rewards: { fountainPens: 30, currency: 10 },
-                stageStory: [
-                    { character: '도천영', expression: 'neutral', position: 'right', dialogue: '현장에 남은 잉크 얼룩은 세 가지 종류입니다. 하나는 박민준의 것, 다른 하나는... 범인의 것, 그리고 나머지 하나는 모방의 흔적입니다.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '세 번째 잉크가 이 사건의 열쇠군. 범인은 자신이 아닌 누군가의 흔적을 모방해 남겼어. 교활한 그림자군.' }
-                ]
-            },
-            { 
-                stageName: '1-4. 현장의 재구성', monsterName: '의혹의 안개', rewards: { fountainPens: 35, currency: 10 },
-                stageStory: [
-                    { character: '한 현', expression: 'neutral', position: 'right', dialogue: '서점 주인인 제가 보기에도, 이 현장의 책 배치는 너무 인위적입니다. 평소 박민준 작가의 습관과 달라요.' },
-                    { character: '서도진', expression: 'neutral', position: 'left', dialogue: '범인은 박민준을 잘 아는 사람이야. 하지만 이 현장을 꾸미는 데는 다른 사람의 \'습관\'을 빌려왔지.' } // <-- '습관' 주변의 작은따옴표를 이스케이프 처리 (\')
-                ]
-            },
-            { 
-                stageName: '1-5. 용의자의 진술', monsterName: '모방범의 그림자', rewards: { fountainPens: 40, currency: 15 },
-                stageStory: [
-                    { character: null, dialogue: '가장 유력한 용의자 A는 사건 당시 완벽한 알리바이를 제시했다. 그의 진술은 한 치의 오차도 없었다.' },
-                    { character: '박연우', expression: 'neutral', position: 'right', dialogue: '이 구조식처럼, 진술은 완벽한 고리입니다. 하지만 완벽함 자체가 오히려 의심스럽죠.' }
-                ]
-            },
-            { 
-                stageName: '1-6. 알리바이의 허점', monsterName: '모방범의 그림자', rewards: { fountainPens: 45, currency: 15 },
-                stageStory: [
-                    { character: '강은율', expression: 'neutral', position: 'left', dialogue: '용의자 A가 제시한 시간대 시뮬레이션 결과, 그가 주장한 경로를 벗어난 미세한 시간차가 확인되었습니다.' },
-                    { character: null, dialogue: '0.001초의 오차. 아무도 주목하지 않았던 그 작은 오차에서 "모방범의 그림자"가 희미하게 모습을 드러냈다.' }
-                ]
-            },
-            { 
-                stageName: '1-7. 미제 사건 파일', monsterName: '모방범의 그림자', rewards: { fountainPens: 50, currency: 20 },
-                stageStory: [
-                    { character: '백정문', expression: 'serious', position: 'right', dialogue: '이전에 발생했던 미제 사건 파일들과 현장의 "에너지 잔류 패턴"이 일치합니다. 단순 모방이 아닐지도 모릅니다.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '그렇다면 범인은 과거의 사건을 재연하며, 우리에게 어떤 규칙을 강요하고 있는 거야.' }
-                ]
-            },
-            { 
-                stageName: '1-8. 침묵의 증인', monsterName: '모방범의 그림자', rewards: { fountainPens: 55, currency: 20 },
-                stageStory: [
-                    { character: '윤유준', expression: 'neutral', position: 'left', dialogue: '제가 사건 당일 밤, 박민준 작가의 작업실 근처를 지나가는 사람을 봤어요. 어두워서 얼굴은 못 봤지만... 익숙한 실루엣이었어요.' },
-                    { character: null, dialogue: '학생의 사소한 증언. 그것은 완벽하게 짜인 범인의 이야기 속에서 유일하게 침묵하지 않은 진실이었다.' }
-                ]
-            },
-            { 
-                stageName: '1-9. 숨겨진 의도', monsterName: '모방범의 그림자', rewards: { fountainPens: 60, currency: 25 },
-                stageStory: [
-                    { character: '독고유진', expression: 'serious', position: 'right', dialogue: '이 모든 것이 작가인 박민준의 소설을 모방한 것이라면, 범인의 최종 목적은 소설의 "완결"일 겁니다.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '그리고 그 완결의 장소는... 다음 피해자의 집이 되겠지.' }
-                ]
-            },
-            { 
-                stageName: '1-10. 장의 결말 (챕터 보스)', monsterName: '날조된 증거', rewards: { fountainPens: 100, currency: 30 },
-                stageStory: [
-                    { character: null, dialogue: '모든 단서는 윤필규의 이름으로 모였다. 하지만 그 모든 증거는 너무나도 쉽게 발견되었고, 너무나도 명확했다.' },
-                    { character: '도천영', expression: 'serious', position: 'right', dialogue: '이 날조된 증거들 속에 감춰진 진범을 찾아야 합니다. 서 작가.' }
-                ]
-            },
-        ],
-    },
-    {
-        chapterName: '제2장: 미궁 속의 실험',
-        stages: [
-            { 
-                stageName: '2-1. 새로운 가설', monsterName: '모방범의 그림자', rewards: { fountainPens: 70, currency: 10 },
-                stageStory: [
-                    { character: '도천영', expression: 'neutral', position: 'right', dialogue: '박민준의 시신에서 검출된 독성 물질은 매우 희귀합니다. 저는 이를 "D-성분"이라 명명했습니다.' },
-                    { character: '서도진', expression: 'neutral', position: 'left', dialogue: 'D-성분이라... 독성 물질이라면 이 사건은 소설 모방이 아닌 화학 물질 실험과 관련이 있다는 건가?' }
-                ]
-            },
-            { 
-                stageName: '2-2. 통제된 변수', monsterName: '모방범의 그림자', rewards: { fountainPens: 75, currency: 10 },
-                stageStory: [
-                    { character: '윤서천', expression: 'neutral', position: 'right', dialogue: 'D-성분은 제가 5년 전 연구하던 물질입니다. 치사량에 이르면 평온한 상태로 죽음에 이르게 하죠. 마치... 완벽한 자살처럼.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '당신이 범인인가?' },
-                    { character: '윤서천', expression: 'neutral', position: 'right', dialogue: '아뇨, 저는 D-성분이 외부로 유출된 것을 알았을 뿐입니다. 그리고 그것을 회수하려 합니다.' }
-                ]
-            },
-            { 
-                stageName: '2-3. 예상치 못한 반응', monsterName: '모방범의 그림자', rewards: { fountainPens: 80, currency: 15 },
-                stageStory: [
-                    { character: '박연우', expression: 'neutral', position: 'left', dialogue: 'D-성분은 특정 환경에서 예상치 못한 화학적 반응을 일으킵니다. 그 반응이 현장의 잉크 얼룩을 변색시켰을 가능성이 있습니다.' },
-                    { character: null, dialogue: '사건은 추리 소설의 영역을 넘어 화학 미스터리로 변해가고 있었다.' }
-                ]
-            },
-            { 
-                stageName: '2-4. 오염된 샘플', monsterName: '모방범의 그림자', rewards: { fountainPens: 85, currency: 15 },
-                stageStory: [
-                    { character: '도천영', expression: 'serious', position: 'right', dialogue: '윤서천이 제공한 D-성분의 샘플은 순도가 너무 높습니다. 실제 박민준의 시신에서 발견된 샘플은 다른 물질과 "오염"되어 있었습니다.' },
-                    { character: '서도진', expression: 'neutral', position: 'left', dialogue: '그 오염 물질을 아는 사람, 또는 D-성분을 사용한 후 현장을 조작한 사람이 범인이겠군.' }
-                ]
-            },
-            { 
-                stageName: '2-5. 연구자의 윤리', monsterName: '날조된 증거', rewards: { fountainPens: 90, currency: 20 },
-                stageStory: [
-                    { character: '윤서천', expression: 'serious', position: 'right', dialogue: '제 연구는 인류의 고통 없는 종결을 위한 것이었습니다. 하지만 누군가 제 연구를 살인에 악용하고 있어요.' },
-                    { character: null, dialogue: '윤서천은 자신의 비윤리적인 연구에 대한 죄책감과, 자신의 의도와 다른 결과를 낳았다는 분노를 동시에 느끼고 있었다.' }
-                ]
-            },
-            { 
-                stageName: '2-6. 잊혀진 약물', monsterName: '날조된 증거', rewards: { fountainPens: 95, currency: 20 },
-                stageStory: [
-                    { character: '양석민', expression: 'neutral', position: 'left', dialogue: 'D-성분과 오염 물질의 결합 경로를 분석했습니다. 이 결합 방식은 10년 전 폐기된 한 실험실에서만 사용되던 방식입니다.' },
-                    { character: null, dialogue: '결합 경로를 따라가자, 사건은 과거의 "잊혀진 약물" 실험과 연결되기 시작했다.' }
-                ]
-            },
-            { 
-                stageName: '2-7. 배후의 조력자', monsterName: '날조된 증거', rewards: { fountainPens: 100, currency: 25 },
-                stageStory: [
-                    { character: '도천영', expression: 'serious', position: 'right', dialogue: '윤필규는 박민준의 편집자였고, 윤서천은 박민준의 대학 후배였습니다. 이 모든 사건은 이 세 사람의 관계에서 시작된 것 같습니다.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '가장 가까운 곳에 있던 조력자가, 사실은 가장 멀리서 조종하는 배후였을 가능성. 소설의 클리셰는 현실에서 반복되는군.' }
-                ]
-            },
-            { 
-                stageName: '2-8. 역추적', monsterName: '날조된 증거', rewards: { fountainPens: 105, currency: 25 },
-                stageStory: [
-                    { character: '강은율', expression: 'neutral', position: 'left', dialogue: '범인이 사용한 컴퓨터의 접속 기록을 역추적했습니다. 그 기록은 윤필규가 아닌, 또 다른 인물을 가리키고 있습니다.' },
-                    { character: null, dialogue: '데이터가 던진 새로운 가설. 윤필규는 진범이 아닌, 진범이 이용하려 했던 또 다른 희생양일지도 모른다.' }
-                ]
-            },
-            { 
-                stageName: '2-9. 긴급 상황', monsterName: '날조된 증거', rewards: { fountainPens: 110, currency: 30 },
-                stageStory: [
-                    { character: '윤유준', expression: 'surprised', position: 'right', dialogue: '윤필규 씨가 위험해요! 방금 윤필규 씨 집에서 수상한 빛이 번쩍였어요!' },
-                    { character: '서도진', expression: 'angry', position: 'left', dialogue: '젠장! 늦었나? 서둘러야 해!' }
-                ]
-            },
-            { 
-                stageName: '2-10. 비극적인 실험 (챕터 보스)', monsterName: '편집된 진실', rewards: { fountainPens: 180, currency: 40 },
-                stageStory: [
-                    { character: null, dialogue: '윤필규의 집에서 발견된 것은, 편집된 진실이었습니다. 현장은 완벽했고, D-성분의 흔적은 사라지고 없었습니다.' },
-                    { character: '서도진', expression: 'serious', position: 'left', dialogue: '범인은 모든 것을 숨겼어. 이제 진범과 정면으로 맞설 수밖에 없다.' }
-                ]
-            },
-        ],
-    }, 
-];
             
-           
-
-           // [이 코드로 기존 const eventStories = [...] 블록 전체를 교체하세요]
 
 
 // ✅ 1단계: 아래 코드를 game_data.js 파일에 추가하세요.
@@ -722,6 +626,7 @@ const genericInteractions = [
     ['사건 조사는 잘 돼가나요?', '쉽지 않네요.'],
     ['안녕하세요!', '반갑습니다.']
 ];
+
 
 
 
