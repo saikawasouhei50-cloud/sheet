@@ -8,7 +8,7 @@ let mainStories = [];  // 추가
 let eventStories = []; // 추가
 			// ==========================================
 // 1. 아까 복사한 웹 앱 URL을 따옴표 안에 넣으세요
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyPcE7lXAIcoyrUR3PbQNbDvSxUNjxe2jAKoKxCXzNpQNdqLOufffh1K-p1mPiiiSixcA/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxt8dZ-QG0izquVNUsFL0AyT4XJQe5cHPAAM4Q4ZTS2vvib6FxhKVVuAfMiwcELsLhvdQ/exec";
 // ==========================================
 
 // 2. 데이터를 가져와서 characters 변수에 채워넣는 함수
@@ -700,6 +700,7 @@ const genericInteractions = [
     ['사건 조사는 잘 돼가나요?', '쉽지 않네요.'],
     ['안녕하세요!', '반갑습니다.']
 ];
+
 
 
 
