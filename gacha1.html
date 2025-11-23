@@ -1240,6 +1240,14 @@ async function loadGameFromFirebase(uid) {
 
     // 데이터 로드 후 공통으로 실행할 UI 업데이트 및 게임 준비
     calculateOfflineRegen();
+	playerInventory.forEach(card => {
+    if (!card.id) {
+        // ID가 없으면 현재 시간 + 랜덤숫자로 만들어줌
+        card.id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        console.log("ID 없는 카드 복구됨:", card.name, card.id);
+    }
+});
+saveGame(); // 복구한 내용을 저장
     updateUI();
     checkEventStatus();
     switchTab('home');
@@ -4770,6 +4778,7 @@ speed4xButton.addEventListener('click', () => setCombatSpeed(4));
     </script>
 </body>
 </html>
+
 
 
 
