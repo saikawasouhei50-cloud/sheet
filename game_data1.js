@@ -6,7 +6,7 @@ let eventDungeons = [];
 let eventShopItems = [];
 			// ==========================================
 // 1. 아까 복사한 웹 앱 URL을 따옴표 안에 넣으세요
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxnZkGAJO0DxO3XtxWpHmkOTX6EwO9hkTPUHxD3QTqRFVsv7KjC_IBU8e1vkIVWBECqZw/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycby8THqewWso4bK9h2aIJo9nKbSYKI7IaykOhoV8TJE4ouUtZ1TDDKjii0u40GXbDnD57g/exec";
 // ==========================================
 
 // 2. 데이터를 가져와서 characters 변수에 채워넣는 함수
@@ -917,6 +917,7 @@ const genericInteractions = [
     ['사건 조사는 잘 돼가나요?', '쉽지 않네요.'],
     ['안녕하세요!', '반갑습니다.']
 ];
+
 
 
 
