@@ -1186,10 +1186,17 @@ async function loadGameFromFirebase(uid) {
         playerFountainPens = savedData.fountainPens ?? 500;
         playerInkwells = savedData.inkwells ?? 0;
         const loadedInventory = savedData.inventory || [];
+        
+        // ▼▼▼ [수정됨] 데이터를 불러올 때 level과 revision이 없으면 0으로 채워주는 안전장치 ▼▼▼
         playerInventory = loadedInventory.map(card => ({
             ...card,
-            revision: card.revision ?? 0
+            // 기존에 revision이 없으면 0으로 설정
+            revision: (card.revision !== undefined && card.revision !== null) ? card.revision : 0,
+            // 기존에 level이 없으면 0으로 설정 (이게 핵심!)
+            level: (card.level !== undefined && card.level !== null) ? card.level : 0
         }));
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
         collectedCardNames = new Set(savedData.collectedCardNames || []);
         const savedDeckIds = savedData.deck || [];
         playerDeck = savedDeckIds.map(id => playerInventory.find(card => card.id === id)).filter(Boolean);
@@ -4778,6 +4785,7 @@ speed4xButton.addEventListener('click', () => setCombatSpeed(4));
     </script>
 </body>
 </html>
+
 
 
 
