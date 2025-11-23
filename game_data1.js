@@ -1,5 +1,9 @@
 // --- 게임 설정 ---
             let characters = [];
+let monsters = {}; // 몬스터는 객체({}) 형태입니다!
+let furnitureItems = [];
+let eventDungeons = [];
+let eventShopItems = [];
 			// ==========================================
 // 1. 아까 복사한 웹 앱 URL을 따옴표 안에 넣으세요
 const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxnZkGAJO0DxO3XtxWpHmkOTX6EwO9hkTPUHxD3QTqRFVsv7KjC_IBU8e1vkIVWBECqZw/exec";
@@ -10,69 +14,86 @@ async function loadGameData() {
     try {
         console.log("데이터 로딩 시작...");
         const response = await fetch(GOOGLE_SHEET_URL);
-        const data = await response.json();
+        const data = await response.json(); // 전체 데이터 보따리를 받음
 
-        // 3. 엑셀 데이터를 게임용 데이터로 변환 (조립)
-        characters = data.map(row => {
-            return {
+        // 1. 캐릭터 데이터 조립 (기존과 동일)
+        characters = data.characters.map(row => ({
+            name: row.name,
+            baseName: row.baseName || row.name.split('] ')[1] || row.name,
+            rarity: row.rarity,
+            faction: row.faction,
+            stats: { hp: Number(row.hp), atk: Number(row.atk), def: Number(row.def) },
+            imageUrl: row.imageUrl,
+            cardImageUrl: row.cardImageUrl || row.imageUrl,
+            dialogues: row.dialogues ? String(row.dialogues).split('|') : ['...'],
+            skills: [
+                { name: row.skill1_name, dialogue: row.skill1_dialogue, power: Number(row.skill1_power), type: row.skill1_type },
+                ...(row.skill2_name ? [{ name: row.skill2_name, dialogue: row.skill2_dialogue, power: Number(row.skill2_power), type: row.skill2_type }] : [])
+            ],
+            deathDialogue: row.deathDialogue,
+            story: row.story,
+            enhancementSuccessDialogue: row.enhancementSuccessDialogue
+        }));
+
+        // 2. 몬스터 데이터 조립 (배열을 객체로 변환: monsters['이름'] 형태)
+        monsters = {}; // 초기화
+        data.monsters.forEach(row => {
+            monsters[row.key] = {
                 name: row.name,
-                // baseName이 비어있으면 이름에서 대괄호 뒤쪽만 씀 (예: [소중한 배낭] 선생 -> 선생)
-                baseName: row.baseName || row.name.split('] ')[1] || row.name,
-                rarity: row.rarity,
-                faction: row.faction,
-                
-                // 엑셀엔 따로 있었지만 게임엔 뭉쳐야 하는 스탯
-                stats: {
-                    hp: Number(row.hp),
-                    atk: Number(row.atk),
-                    def: Number(row.def)
-                },
-                
-                imageUrl: row.imageUrl,
-                cardImageUrl: row.cardImageUrl || row.imageUrl,
-                
-                // | 문자로 합쳐둔 대사를 다시 쪼개서 배열로 만듦
-                dialogues: row.dialogues ? String(row.dialogues).split('|') : ['...'],
-                
-                // 스킬 조립 (시트에 skill1_name 등이 있다고 가정)
-                skills: [
-                    {
-                        name: row.skill1_name,
-                        dialogue: row.skill1_dialogue,
-                        power: Number(row.skill1_power),
-                        type: row.skill1_type
-                    }
-                    // 스킬 2가 있다면 여기에 같은 방식으로 추가...
-                ],
-                
-                deathDialogue: row.deathDialogue,
-                story: row.story,
-                enhancementSuccessDialogue: row.enhancementSuccessDialogue
+                stats: { hp: Number(row.hp), atk: Number(row.atk), def: Number(row.def) },
+                imageUrl: row.imageUrl
             };
         });
 
-        console.log("데이터 로딩 완료! 캐릭터 수:", characters.length);
-        
-        // ★ 중요: 데이터 로딩이 끝났으니 게임을 시작하거나 화면을 갱신하라고 알림
-        // (gacha.html에 있는 초기화 함수 등을 여기서 호출하면 좋습니다)
-        // 예: if (typeof updateUI === 'function') updateUI();
+        // 3. 가구 데이터 조립
+        furnitureItems = data.furniture.map(row => ({
+            id: row.id,
+            name: row.name,
+            type: row.type,
+            size: { w: Number(row.w), h: Number(row.h) }, // w, h를 묶어서 size 객체로
+            cost: Number(row.cost),
+            scale: row.scale ? Number(row.scale) : undefined, // scale이 있으면 넣음
+            imageUrl: row.imageUrl
+        }));
+
+        // 4. 이벤트 던전 조립
+        eventDungeons = data.eventDungeons.map(row => ({
+            name: row.name,
+            monsterName: row.monsterName,
+            eventPointReward: Number(row.eventPointReward)
+        }));
+
+        // 5. 이벤트 상점 조립 (itemData 연결 로직 필요)
+        eventShopItems = data.eventShop.map(row => {
+            // 카드인 경우 실제 캐릭터 데이터를 찾아 연결하고, 아니면 숫자 등을 그대로 씀
+            let itemData = row.itemData;
+            if (row.type === 'card') {
+                // 캐릭터 이름으로 캐릭터 데이터 찾기 (데이터가 로드된 이후라 가능)
+                const foundChar = characters.find(c => c.name === row.itemData);
+                itemData = foundChar || row.itemData; // 못 찾으면 그냥 이름 둠 (에러 방지)
+            } else {
+                itemData = Number(row.itemData); // 보석 등은 숫자로 변환
+            }
+
+            return {
+                id: row.id,
+                name: row.name,
+                type: row.type,
+                cost: Number(row.cost),
+                limit: Number(row.limit),
+                itemData: itemData
+            };
+        });
+
+        console.log("모든 데이터 로딩 완료!");
 
     } catch (error) {
         console.error("데이터 로딩 실패:", error);
-        alert("데이터를 불러오지 못했습니다.");
+        alert("데이터를 불러오지 못했습니다. " + error.message);
     }
 }
             
-            const monsters = {
-                // 1장 초반부 일반 몬스터
-                '의혹의 안개': { name: '의혹의 안개', stats: { hp: 300, atk: 15, def: 10 }, imageUrl: 'https://placehold.co/300x300/a0aec0/4a5568?text=Fog+of+Doubt' },
-                // 1장 후반부 일반 몬스터
-                '모방범의 그림자': { name: '모방범의 그림자', stats: { hp: 800, atk: 30, def: 20 }, imageUrl: 'https://placehold.co/300x300/63b3ed/4a5568?text=Copycat+Shadow' },
-                // 2장 방어형 몬스터
-                '날조된 증거': { name: '날조된 증거', stats: { hp: 1200, atk: 40, def: 35 }, imageUrl: 'https://placehold.co/300x300/f56565/000000?text=Fabricated+Evidence' },
-                // 2장 보스 및 강력한 몬스터
-                '편집된 진실': { name: '편집된 진실', stats: { hp: 2000, atk: 50, def: 15 }, imageUrl: 'https://placehold.co/300x300/4a5568/ffffff?text=The+Edited+Truth' }
-            };
+            
 
             const mainChapters = [
     {
@@ -229,18 +250,7 @@ async function loadGameData() {
     }, 
 ];
             
-           const eventDungeons = [
-    { name: '1장', monsterName: '의혹의 안개', eventPointReward: 100 },
-    { name: '2장', monsterName: '의혹의 안개', eventPointReward: 120 },
-    { name: '3장', monsterName: '모방범의 그림자', eventPointReward: 150 },
-    { name: '4장', monsterName: '모방범의 그림자', eventPointReward: 180 },
-    { name: '5장', monsterName: '날조된 증거', eventPointReward: 220 },
-    { name: '6장', monsterName: '날조된 증거', eventPointReward: 250 },
-    { name: '7장', monsterName: '날조된 증거', eventPointReward: 300 },
-    { name: '8장', monsterName: '편집된 진실', eventPointReward: 350 },
-    { name: '9장', monsterName: '편집된 진실', eventPointReward: 400 },
-    { name: '10장', monsterName: '편집된 진실', eventPointReward: 500 }
-];
+           
 
            // [이 코드로 기존 const eventStories = [...] 블록 전체를 교체하세요]
 const eventStories = [
@@ -526,13 +536,7 @@ const eventStoryPart2 = {
     secondHalf: [] // <--- 이 부분을 빈 배열로 만듭니다.
 };
 
-            const eventShopItems = [
-                { id: 'event_ssr_sensei', name: '[소중한 배낭] 선생', type: 'card', cost: 15000, limit: 1, itemData: characters.find(c => c.name === '[소중한 배낭] 선생') },
-{ id: 'event_sr_hyeon', name: '[백청자] 한 현', type: 'card', cost: 5000, limit: 1, itemData: characters.find(c => c.name === '[백청자] 한 현') },
-{ id: 'event_r_dohwa', name: '[목줄 매인 고양이] 백도화', type: 'card', cost: 1000, limit: 5, itemData: characters.find(c => c.name === '[목줄 매인 고양이] 백도화') },
-                { id: 'gems_100', name: '보석 100개', type: 'currency', cost: 1000, limit: 5, itemData: 100 },
-                { id: 'gems_500', name: '보석 500개', type: 'currency', cost: 4500, limit: 2, itemData: 500 }
-            ];
+            
 
 
             // ✅ 이 코드로 기존 mainStories 변수 전체를 교체해주세요.
@@ -865,65 +869,7 @@ const currentEventInfo = {
 
 // game_data.js
 
-const furnitureItems = [
-    // 1. 책상 (넓음)
-    { 
-        id: 'desk_detective', 
-        name: '탐정 사무소 책상', 
-        type: 'floor', // 바닥에 놓는 물건
-        size: { w: 2, h: 1 }, 
-        cost: 0, 
-		scale: 0.5,
-        imageUrl: 'https://i.imgur.com/V80cbue.png' // 👈 잘라낸 책상 이미지 파일명
-    },
-    // 2. 게시판 (벽걸이 - 높이 보정 필요)
-    { 
-        id: 'board_clue', 
-        name: '사건 게시판', 
-        type: 'wall', // 벽에 거는 물건
-        size: { w: 1, h: 1 }, 
-        cost: 0, 
-        imageUrl: 'https://i.imgur.com/xfMeA0r.png' // 👈 잘라낸 게시판 이미지 파일명
-    },
-    // 3. 3단 서류함
-    { 
-        id: 'cabinet_tall', 
-        name: '3단 철제 서류함', 
-        type: 'floor', 
-        size: { w: 1, h: 1 }, 
-        cost: 0, 
-		scale: 0.5,
-        imageUrl: 'https://i.imgur.com/1TRnMdx.png' // 👈 잘라낸 3단 서류함 이미지
-    },
-    // 4. 2단 서류함
-    { 
-        id: 'cabinet_small', 
-        name: '2단 철제 서류함', 
-        type: 'floor', 
-        size: { w: 1, h: 1 }, 
-        cost: 0, 
-		scale: 0.5,
-        imageUrl: 'https://i.imgur.com/4V3YNqa.png' // 👈 잘라낸 2단 서류함 이미지
-    },
-    // 5. 책장
-    { 
-        id: 'bookshelf_wood', 
-        name: '원목 책장', 
-        type: 'floor', 
-        size: { w: 1, h: 1 }, 
-        cost: 0, 
-        imageUrl: 'https://i.imgur.com/vTOoTBr.png' // 👈 잘라낸 책장 이미지
-    },
-    // (기존 러그 유지)
-    { 
-        id: 'rug_red', 
-        name: '붉은색 러그', 
-        type: 'rug', 
-        size: { w: 2, h: 2 }, 
-        cost: 80, 
-        imageUrl: 'https://i.imgur.com/SYin06r.png' 
-    }
-];
+
 
 // --- 캐릭터 SD 이미지 매핑 (없으면 기본 카드 이미지나 플레이스홀더 사용) ---
 // 실제 게임에서는 배경이 투명한 귀여운 SD 캐릭터 이미지가 필요합니다.
@@ -971,6 +917,7 @@ const genericInteractions = [
     ['사건 조사는 잘 돼가나요?', '쉽지 않네요.'],
     ['안녕하세요!', '반갑습니다.']
 ];
+
 
 
 
