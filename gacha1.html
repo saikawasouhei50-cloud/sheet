@@ -832,7 +832,7 @@ body.pointer-events-none {
     let currentUser = null; // 현재 로그인된 유저 정보
 
     // DOM이 모두 로드된 후 게임 스크립트 실행
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
 	document.body.classList.add('loading');
 	await loadGameData();
 	const exitMultiModeButton = document.getElementById('exit-multi-mode');
@@ -4770,6 +4770,7 @@ speed4xButton.addEventListener('click', () => setCombatSpeed(4));
     </script>
 </body>
 </html>
+
 
 
 
