@@ -6,6 +6,9 @@ let eventDungeons = [];
 let eventShopItems = [];
 let mainStories = [];  // 추가
 let eventStories = []; // 추가
+let currentEventInfo = {};
+let EVENT_CHARACTER_NAME = "";
+let gachaPool = {}; // 가챠 등장 목록
 			// ==========================================
 // 1. 아까 복사한 웹 앱 URL을 따옴표 안에 넣으세요
 const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxt8dZ-QG0izquVNUsFL0AyT4XJQe5cHPAAM4Q4ZTS2vvib6FxhKVVuAfMiwcELsLhvdQ/exec";
@@ -143,6 +146,36 @@ async function loadGameData() {
         });
 
         console.log("스토리 데이터 로딩 완료!");
+
+		// 8. 이벤트 정보 설정 (첫 번째 줄만 가져옴)
+        if (data.eventInfo && data.eventInfo.length > 0) {
+            const info = data.eventInfo[0]; // 1행 데이터
+            currentEventInfo = {
+                title: info.title,
+                // 엑셀 날짜 텍스트를 자바스크립트 날짜 객체로 변환
+                startDate: new Date(info.startDate),
+                endDate: new Date(info.endDate),
+                bannerImageUrl: info.bannerImageUrl,
+                description: info.description,
+                gachaCharacterName: info.gachaCharacterName
+            };
+            // 전역 변수 업데이트 (중요!)
+            EVENT_CHARACTER_NAME = info.gachaCharacterName;
+            
+            console.log("이벤트 정보 로드:", currentEventInfo.title);
+        }
+		// 10. 가챠 등장 목록(Pool) 설정
+        if (data.gachaPool) {
+            gachaPool = {};
+            data.gachaPool.forEach(row => {
+                // gachaPool['캐릭터이름'] = { normal: true, event: false } 형태로 저장
+                gachaPool[row.name] = {
+                    normal: (row.in_normal === true || row.in_normal === 'TRUE' || row.in_normal === 1),
+                    event: (row.in_event === true || row.in_event === 'TRUE' || row.in_event === 1)
+                };
+            });
+            console.log("가챠 등장 목록 로드 완료");
+        }
 
         console.log("모든 데이터 로딩 완료!");
 
@@ -518,9 +551,7 @@ const eventStoryPart2 = {
 			
 			const rarityProbabilities = { 'SSR': 3, 'SR': 12, 'R': 35, 'N': 50 };
             const eventRarityProbabilities = { 'SSR': 6, 'SR': 14, 'R': 30, 'N': 50 };
-            const EVENT_CHARACTER_NAME = '[결혼 반지는 아니지만] 서도진';
-            const EVENT_START_DATE = new Date('2025-10-26T00:00:00');
-            const EVENT_END_DATE = new Date('2025-11-9T23:59:59');
+            
 			// --- 강화(퇴고) 비용 설정 ---
 
 // 레벨 0->1, 1->2, ..., 8->9로 갈 때 필요한 만년필의 기본 비용
@@ -641,15 +672,6 @@ const characterProfiles = {
 const CURRENT_EVENT_ID = "mini_event_202510_dohwa";
 
 
-const currentEventInfo = {
-    title: "[ON] 승급전 세번만", // 이벤트 제목
-    startDate: EVENT_START_DATE, // 기존 이벤트 시작 날짜 변수 사용
-    endDate: EVENT_END_DATE,     // 기존 이벤트 종료 날짜 변수 사용
-    bannerImageUrl: "https://placehold.co/600x200/5a4fcf/ffffff?text=푸른+잉크와+그림자", // 이벤트 홈 배너 이미지
-    description: "'실패한 도시'를 떠난 백도화. 몇 달의 시간이 흐른 뒤, 긴 휴식기를 가졌던 그의 방송이 다시 시작된다. 그러나 방송을 보던 현은 무언가 이상한 낌새를 느끼고, 도진에게 의견을 구하는데….", // 이벤트 설명
-    gachaCharacterName: EVENT_CHARACTER_NAME // 기존 이벤트 뽑기 캐릭터 이름 변수 사용
-};
-
 // game_data.js
 
 
@@ -700,6 +722,7 @@ const genericInteractions = [
     ['사건 조사는 잘 돼가나요?', '쉽지 않네요.'],
     ['안녕하세요!', '반갑습니다.']
 ];
+
 
 
 
